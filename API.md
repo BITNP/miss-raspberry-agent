@@ -1,6 +1,6 @@
 # API Reference
 
-HTTP API for `miss-raspberry-agent`. The server listens on `HTTP_ADDR` (default `:8080`) and
+HTTP API for `miss-raspberry-agent`. The server listens on `HTTP_ADDR` (default `:4514`) and
 speaks JSON. All request/response bodies are UTF-8 JSON.
 
 ## Authentication
@@ -49,7 +49,7 @@ All errors share one shape:
 **curl**
 
 ```bash
-curl http://127.0.0.1:8080/healthz
+curl http://127.0.0.1:4514/healthz
 ```
 
 ### `POST /api/v1/agents/main/messages`
@@ -90,7 +90,7 @@ immediately. The agent processes the queue asynchronously.
 **curl**
 
 ```bash
-curl -X POST http://127.0.0.1:8080/api/v1/agents/main/messages \
+curl -X POST http://127.0.0.1:4514/api/v1/agents/main/messages \
   -H "Authorization: Bearer $API_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{"platform":"qq","target_id":"10001","content":"你好","context":"初次打招呼"}'
@@ -140,7 +140,7 @@ within the set), `401` (bad token).
 **curl**
 
 ```bash
-curl -X POST http://127.0.0.1:8080/api/v1/agents/tagger/tag-sets \
+curl -X POST http://127.0.0.1:4514/api/v1/agents/tagger/tag-sets \
   -H "Authorization: Bearer $API_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{"name":"sentiment","tags":[{"name":"positive","description":"Praise or approval","apply_rule":"The text expresses praise, approval, or satisfaction."},{"name":"negative","description":"Complaint or disapproval","apply_rule":"The text expresses criticism, complaint, or dissatisfaction."}]}'
@@ -194,7 +194,7 @@ No match:
 **curl**
 
 ```bash
-curl -X POST http://127.0.0.1:8080/api/v1/agents/tagger/tag \
+curl -X POST http://127.0.0.1:4514/api/v1/agents/tagger/tag \
   -H "Authorization: Bearer $API_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{"name":"sentiment","text":"I really love this update!"}'
@@ -204,5 +204,5 @@ curl -X POST http://127.0.0.1:8080/api/v1/agents/tagger/tag \
 
 | Variable | Default | Description |
 | --- | --- | --- |
-| `HTTP_ADDR` | `:8080` | Address the HTTP API listens on |
+| `HTTP_ADDR` | `:4514` | Address the HTTP API listens on |
 | `API_TOKEN` | — (required) | Bearer token for `/api/v1/*` |
