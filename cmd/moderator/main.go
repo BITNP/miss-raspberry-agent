@@ -16,8 +16,9 @@ import (
 	"os"
 
 	"miss-raspberry-agent/internal/agent"
+	"miss-raspberry-agent/internal/agent/moderator"
 	"miss-raspberry-agent/internal/config"
-	"miss-raspberry-agent/internal/model"
+	"miss-raspberry-agent/internal/llm"
 )
 
 func main() {
@@ -32,7 +33,7 @@ func run() error {
 	if err != nil {
 		return err
 	}
-	if err := agent.ValidateComment(comment); err != nil {
+	if err := moderator.ValidateComment(comment); err != nil {
 		return err
 	}
 
@@ -43,7 +44,7 @@ func run() error {
 
 	ctx := context.Background()
 
-	chatModel, err := model.New(ctx, cfg.Model)
+	chatModel, err := llm.NewJSONModel(ctx, cfg.Model)
 	if err != nil {
 		return fmt.Errorf("construct chat model: %w", err)
 	}

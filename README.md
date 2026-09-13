@@ -37,8 +37,8 @@ LLM (OpenAI-compatible, e.g. DeepSeek)
 
 ## Configuration
 
-Copy `.env.example` to `.env` and fill in real values. `main.go` loads `.env`
-automatically; do not commit the real `.env` (it is gitignored).
+Copy `.env.example` to `.env` and fill in real values. `cmd/server/main.go` loads
+`.env` automatically; do not commit the real `.env` (it is gitignored).
 
 | Variable | Required | Default | Description |
 | --- | --- | --- | --- |
@@ -92,7 +92,7 @@ cp .env.example .env
 ### 3. Run the agent
 
 ```bash
-go run .
+go run ./cmd/server
 ```
 
 You should see `[Napcat] Client started`, then `[main] main_agent started, polling its
@@ -149,7 +149,7 @@ QQ session persists in `./napcat/QQ` across restarts.
 ### 3. Build the agent
 
 ```bash
-go build -o /opt/miss-raspberry-agent/bin/agent .
+go build -o /opt/miss-raspberry-agent/bin/agent ./cmd/server
 ```
 
 ### 4. Run the agent as a service

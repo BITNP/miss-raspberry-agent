@@ -200,6 +200,21 @@ unless a dependency is explicitly request-scoped.
 
 ---
 
+### 6. A single main agent consumes a shared todo queue
+
+There is one long-lived main agent instance. Producers push work items into the agent's
+todo queue instead of constructing or invoking a fresh agent:
+
+- The NapCat client enqueues qualifying QQ messages.
+- The scheduler enqueues fired scheduled tasks.
+- The HTTP API service enqueues submitted messages.
+
+The agent's run loop polls this one queue and processes items asynchronously. The API
+service must therefore insert a request into the main agent's todo queue and must not
+create a new agent instance to handle it.
+
+---
+
 ## Agent Roles
 
 The term "role" can mean different things. Keep them separate.

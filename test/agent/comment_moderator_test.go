@@ -9,7 +9,7 @@ import (
 	"github.com/cloudwego/eino/components/model"
 	"github.com/cloudwego/eino/schema"
 
-	"miss-raspberry-agent/internal/agent"
+	"miss-raspberry-agent/internal/agent/moderator"
 )
 
 type fakeChatModel struct {
@@ -51,9 +51,9 @@ func boolLiteral(b bool) string {
 	return "false"
 }
 
-func newModeratorForTest(content string, err error) (*agent.Moderator, *fakeChatModel) {
+func newModeratorForTest(content string, err error) (*moderator.Moderator, *fakeChatModel) {
 	fake := &fakeChatModel{content: content, err: err}
-	return agent.NewModerator(fake), fake
+	return moderator.NewModerator(fake), fake
 }
 
 func TestRunRejectsShortCommentWithoutCallingModel(t *testing.T) {
@@ -114,7 +114,7 @@ func TestRunDenyNoSubstance(t *testing.T) {
 	if verdict.Allowed {
 		t.Error("expected denied verdict")
 	}
-	want := []string{agent.DenialReasonNoSubstance}
+	want := []string{moderator.DenialReasonNoSubstance}
 	if !equalStrings(verdict.DenialReasons, want) {
 		t.Errorf("denial reasons = %v, want %v", verdict.DenialReasons, want)
 	}
@@ -130,7 +130,7 @@ func TestRunDenyPersonalAttack(t *testing.T) {
 	if verdict.Allowed {
 		t.Error("expected denied verdict")
 	}
-	want := []string{agent.DenialReasonPersonalAttack}
+	want := []string{moderator.DenialReasonPersonalAttack}
 	if !equalStrings(verdict.DenialReasons, want) {
 		t.Errorf("denial reasons = %v, want %v", verdict.DenialReasons, want)
 	}
@@ -146,7 +146,7 @@ func TestRunDenyBothReasons(t *testing.T) {
 	if verdict.Allowed {
 		t.Error("expected denied verdict")
 	}
-	want := []string{agent.DenialReasonNoSubstance, agent.DenialReasonPersonalAttack}
+	want := []string{moderator.DenialReasonNoSubstance, moderator.DenialReasonPersonalAttack}
 	if !equalStrings(verdict.DenialReasons, want) {
 		t.Errorf("denial reasons = %v, want %v", verdict.DenialReasons, want)
 	}

@@ -4,7 +4,7 @@ import (
 	"strings"
 	"testing"
 
-	"miss-raspberry-agent/internal/agent"
+	"miss-raspberry-agent/internal/agent/moderator"
 )
 
 func TestCountWords(t *testing.T) {
@@ -26,7 +26,7 @@ func TestCountWords(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := agent.CountWords(tt.in); got != tt.want {
+			if got := moderator.CountWords(tt.in); got != tt.want {
 				t.Errorf("CountWords(%q) = %d, want %d", tt.in, got, tt.want)
 			}
 		})
@@ -34,21 +34,21 @@ func TestCountWords(t *testing.T) {
 }
 
 func TestValidateCommentLengthBoundary(t *testing.T) {
-	hundred := strings.TrimSpace(strings.Repeat("word ", agent.MinCommentWords))
-	if err := agent.ValidateComment(hundred); err == nil {
+	hundred := strings.TrimSpace(strings.Repeat("word ", moderator.MinCommentWords))
+	if err := moderator.ValidateComment(hundred); err == nil {
 		t.Error("expected error for exactly 100 words")
 	}
 
-	if err := agent.ValidateComment(hundred + " plus"); err != nil {
-		t.Errorf("expected %d words to pass, got err=%v", agent.MinCommentWords+1, err)
+	if err := moderator.ValidateComment(hundred + " plus"); err != nil {
+		t.Errorf("expected %d words to pass, got err=%v", moderator.MinCommentWords+1, err)
 	}
 
-	chineseHundred := strings.Repeat("好", agent.MinCommentWords)
-	if err := agent.ValidateComment(chineseHundred); err == nil {
+	chineseHundred := strings.Repeat("好", moderator.MinCommentWords)
+	if err := moderator.ValidateComment(chineseHundred); err == nil {
 		t.Error("expected error for exactly 100 Chinese characters")
 	}
 
-	if err := agent.ValidateComment(chineseHundred + "好"); err != nil {
-		t.Errorf("expected %d Chinese characters to pass, got err=%v", agent.MinCommentWords+1, err)
+	if err := moderator.ValidateComment(chineseHundred + "好"); err != nil {
+		t.Errorf("expected %d Chinese characters to pass, got err=%v", moderator.MinCommentWords+1, err)
 	}
 }
