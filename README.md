@@ -53,8 +53,9 @@ Copy `.env.example` to `.env` and fill in real values. `cmd/server/main.go` load
 ## HTTP API
 
 The agent exposes an HTTP API so callers can push messages into the main agent's queue. It
-requires a bearer token (`API_TOKEN`). See [`API.md`](API.md) for the full reference,
-request/response shapes, and curl examples.
+also exposes tagger endpoints for registering in-memory tag sets and (once built) tagging
+text against them. It requires a bearer token (`API_TOKEN`). See [`API.md`](API.md) for the
+full reference, request/response shapes, and curl examples.
 
 ```bash
 curl -X POST http://127.0.0.1:8080/api/v1/agents/main/messages \

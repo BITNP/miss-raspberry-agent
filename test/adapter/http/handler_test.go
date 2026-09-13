@@ -8,6 +8,7 @@ import (
 
 	transporthttp "miss-raspberry-agent/internal/adapter/http"
 	"miss-raspberry-agent/internal/adapter/http/handler"
+	"miss-raspberry-agent/internal/tagging"
 )
 
 func TestSendMessageAcceptedAndQueued(t *testing.T) {
@@ -74,7 +75,11 @@ func TestSendMessageRejectsBadRequests(t *testing.T) {
 }
 
 func TestSendMessageInternalError(t *testing.T) {
-	router := transporthttp.NewRouter(handler.NewMessageHandler(fakeSubmitter{err: errors.New("boom")}), testToken)
+	router := transporthttp.NewRouter(
+		handler.NewMessageHandler(fakeSubmitter{err: errors.New("boom")}),
+		handler.NewTaggingHandler(tagging.NewService(tagging.NewStore())),
+		testToken,
+	)
 	rec := doRequest(router, http.MethodPost, "/api/v1/agents/main/messages", "Bearer "+testToken, validBody())
 	if rec.Code != http.StatusInternalServerError {
 		t.Fatalf("status = %d, want %d", rec.Code, http.StatusInternalServerError)

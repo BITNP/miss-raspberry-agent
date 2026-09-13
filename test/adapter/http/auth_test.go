@@ -15,6 +15,7 @@ import (
 	transporthttp "miss-raspberry-agent/internal/adapter/http"
 	"miss-raspberry-agent/internal/adapter/http/handler"
 	"miss-raspberry-agent/internal/messaging"
+	"miss-raspberry-agent/internal/tagging"
 	"miss-raspberry-agent/internal/tool/todo"
 )
 
@@ -38,7 +39,11 @@ func (f fakeSubmitter) Submit(context.Context, messaging.Message) (string, error
 
 func newTestRouter() (*gin.Engine, *todo.Store) {
 	queue := todo.NewStore()
-	router := transporthttp.NewRouter(handler.NewMessageHandler(messaging.NewService(queue)), testToken)
+	router := transporthttp.NewRouter(
+		handler.NewMessageHandler(messaging.NewService(queue)),
+		handler.NewTaggingHandler(tagging.NewService(tagging.NewStore())),
+		testToken,
+	)
 	return router, queue
 }
 
