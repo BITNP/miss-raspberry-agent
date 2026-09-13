@@ -13,9 +13,11 @@ import (
 	httphandler "miss-raspberry-agent/internal/adapter/http/handler"
 	"miss-raspberry-agent/internal/adapter/napcat"
 	mainagent "miss-raspberry-agent/internal/agent/main"
+	taggeragent "miss-raspberry-agent/internal/agent/tagger"
 	"miss-raspberry-agent/internal/config"
 	"miss-raspberry-agent/internal/llm"
 	"miss-raspberry-agent/internal/messaging"
+	"miss-raspberry-agent/internal/tagging"
 )
 
 // Run builds the whole application from cfg and runs it until ctx is canceled.
@@ -48,7 +50,17 @@ func Run(ctx context.Context, cfg config.Config) error {
 
 	// Expose the HTTP API that lets callers push messages into the same todo queue.
 	messageService := messaging.NewService(agent.Queue())
-	router := http.NewRouter(httphandler.NewMessageHandler(messageService), cfg.HTTP.APIToken)
+
+	taggingModel, err := llm.NewJSONModel(ctx, cfg.Model)
+	if err != nil {
+		return fmt.Errorf("construct tagging model: %w", err)
+	}
+	taggingService := tagging.NewService(tagging.NewStore(), taggeragent.NewTagger(taggingModel))
+	router := http.NewRouter(
+		httphandler.NewMessageHandler(messageService),
+		httphandler.NewTaggingHandler(taggingService),
+		cfg.HTTP.APIToken,
+	)
 	server := http.NewServer(cfg.HTTP.Addr, router)
 
 	serverErr := make(chan error, 1)
