@@ -14,7 +14,7 @@ import (
 // TaggingService is the application service the tagging handler depends on.
 type TaggingService interface {
 	RegisterSet(ctx context.Context, name string, tags []tagging.Tag) error
-	Tag(ctx context.Context, setName, text string) ([]tagging.Tag, error)
+	Tag(ctx context.Context, setName, text string) (*tagging.Match, error)
 }
 
 // TaggingHandler serves the tag-set registration and tagging endpoints.
@@ -58,9 +58,9 @@ func (h *TaggingHandler) RegisterSet(c *gin.Context) {
 	c.JSON(http.StatusOK, dto.RegisterTagSetResponse{Name: req.Name, TagCount: len(tags)})
 }
 
-// Tag handles POST /api/v1/agents/tagger/tag: it validates the body and confirms
-// the tag set exists. The tagger agent is not built yet, so it returns
-// 501 Not Implemented.
+// Tag handles POST /api/v1/agents/tagger/tag: it validates the body, confirms
+// the tag set exists, and returns the single best-matching tag with the tagger's
+// reason. The "tag" field is null when no tag applies.
 func (h *TaggingHandler) Tag(c *gin.Context) {
 	var req dto.TagRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -68,24 +68,25 @@ func (h *TaggingHandler) Tag(c *gin.Context) {
 		return
 	}
 
-	tags, err := h.service.Tag(c.Request.Context(), req.Name, req.Text)
+	match, err := h.service.Tag(c.Request.Context(), req.Name, req.Text)
 	if err != nil {
 		switch {
 		case errors.Is(err, tagging.ErrTagSetNotFound):
 			c.JSON(http.StatusNotFound, dto.ErrorResponse{Error: err.Error()})
 		case errors.Is(err, tagging.ErrInvalidTagSet):
 			c.JSON(http.StatusBadRequest, dto.ErrorResponse{Error: err.Error()})
-		case errors.Is(err, tagging.ErrNotImplemented):
-			c.JSON(http.StatusNotImplemented, dto.ErrorResponse{Error: err.Error()})
 		default:
 			c.JSON(http.StatusInternalServerError, dto.ErrorResponse{Error: "internal error"})
 		}
 		return
 	}
 
-	items := make([]dto.TagItem, 0, len(tags))
-	for _, t := range tags {
-		items = append(items, dto.TagItem{Name: t.Name, Description: t.Description})
+	resp := dto.TagResponse{Name: req.Name}
+	if match != nil {
+		resp.Tag = &dto.TagItem{
+			Name:   match.Tag.Name,
+			Reason: match.Reason,
+		}
 	}
-	c.JSON(http.StatusOK, dto.TagResponse{Name: req.Name, Tags: items})
+	c.JSON(http.StatusOK, resp)
 }

@@ -41,7 +41,7 @@ func newTestRouter() (*gin.Engine, *todo.Store) {
 	queue := todo.NewStore()
 	router := transporthttp.NewRouter(
 		handler.NewMessageHandler(messaging.NewService(queue)),
-		handler.NewTaggingHandler(tagging.NewService(tagging.NewStore())),
+		handler.NewTaggingHandler(tagging.NewService(tagging.NewStore(), &fakeTagger{})),
 		testToken,
 	)
 	return router, queue

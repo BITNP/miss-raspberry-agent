@@ -25,14 +25,15 @@ type TagRequest struct {
 	Text string `json:"text" binding:"required"`
 }
 
-// TagItem is one tag in a TagResponse.
+// TagItem is the best-matching tag in a TagResponse.
 type TagItem struct {
-	Name        string `json:"name"`
-	Description string `json:"description,omitempty"`
+	Name   string `json:"name"`
+	Reason string `json:"reason,omitempty"`
 }
 
-// TagResponse is returned by POST /api/v1/agents/tagger/tag.
+// TagResponse is returned by POST /api/v1/agents/tagger/tag. Tag is null when no
+// registered tag applies to the text.
 type TagResponse struct {
-	Name string    `json:"name"`
-	Tags []TagItem `json:"tags"`
+	Name string   `json:"name"`
+	Tag  *TagItem `json:"tag"`
 }

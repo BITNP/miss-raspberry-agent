@@ -31,7 +31,6 @@ All errors share one shape:
 | `404 Not Found` | Referenced resource (e.g. tag set) does not exist |
 | `422 Unprocessable Entity` | Well-formed request but unsupported value (e.g. unknown platform) |
 | `500 Internal Server Error` | Unexpected server error |
-| `501 Not Implemented` | Endpoint accepted the request but its backing feature is not built yet |
 
 ## Endpoints
 
@@ -149,9 +148,9 @@ curl -X POST http://127.0.0.1:8080/api/v1/agents/tagger/tag-sets \
 
 ### `POST /api/v1/agents/tagger/tag`
 
-**Description:** Applies a registered tag set to a piece of text and returns the tags whose
-`apply_rule` matches. The tagger agent is **not built yet**: the request is validated and the
-tag set is looked up, but the endpoint currently responds `501 Not Implemented`.
+**Description:** Applies a registered tag set to a piece of text and returns the **single
+best-matching tag** chosen by the tagger agent, together with a short reason. When no
+registered tag applies, `tag` is `null`.
 
 **Request body**
 
@@ -164,17 +163,33 @@ tag set is looked up, but the endpoint currently responds `501 Not Implemented`.
 { "name": "sentiment", "text": "I really love this update!" }
 ```
 
-**Response `200 OK`** (once implemented)
+**Response `200 OK`**
 
 | Field | Type | Description |
 | --- | --- | --- |
 | `name` | string | The tag set used. |
-| `tags` | array | Tags that apply to `text`. |
-| `tags[].name` | string | Matched tag name. |
-| `tags[].description` | string | Matched tag description, if any. |
+| `tag` | object \| null | The best-matching tag, or `null` when none applies. |
+| `tag.name` | string | Matched tag name. |
+| `tag.reason` | string | Short reason why the tag applies. |
+
+```json
+{
+  "name": "sentiment",
+  "tag": {
+    "name": "positive",
+    "reason": "The text expresses strong approval of the update."
+  }
+}
+```
+
+No match:
+
+```json
+{ "name": "sentiment", "tag": null }
+```
 
 **Error responses:** `400` (malformed body or missing/blank field), `401` (bad token),
-`404` (no tag set registered under `name`), `501` (tagger not implemented yet).
+`404` (no tag set registered under `name`).
 
 **curl**
 

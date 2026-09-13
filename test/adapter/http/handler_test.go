@@ -77,7 +77,7 @@ func TestSendMessageRejectsBadRequests(t *testing.T) {
 func TestSendMessageInternalError(t *testing.T) {
 	router := transporthttp.NewRouter(
 		handler.NewMessageHandler(fakeSubmitter{err: errors.New("boom")}),
-		handler.NewTaggingHandler(tagging.NewService(tagging.NewStore())),
+		handler.NewTaggingHandler(tagging.NewService(tagging.NewStore(), &fakeTagger{})),
 		testToken,
 	)
 	rec := doRequest(router, http.MethodPost, "/api/v1/agents/main/messages", "Bearer "+testToken, validBody())

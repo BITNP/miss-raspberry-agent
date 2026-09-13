@@ -5,6 +5,8 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+
+	"miss-raspberry-agent/internal/agent/tagger"
 )
 
 // ErrInvalidTagSet is returned when a tag set or tag definition is malformed.
@@ -16,17 +18,21 @@ var ErrDuplicateTagName = errors.New("duplicate tag name")
 // ErrTagSetNotFound is returned when tagging references an unregistered set.
 var ErrTagSetNotFound = errors.New("tag set not found")
 
-// ErrNotImplemented is returned while the tagger agent is not built yet.
-var ErrNotImplemented = errors.New("tagger agent not implemented yet")
-
-// Service registers tag sets and (eventually) tags text against them.
-type Service struct {
-	store *Store
+// Tagger selects the best-matching tag for a text. It is satisfied by
+// agent/tagger.Tagger and is defined here, next to its consumer.
+type Tagger interface {
+	Run(ctx context.Context, tags []tagger.Tag, text string) (tagger.Result, error)
 }
 
-// NewService creates a tagging service backed by the given store.
-func NewService(store *Store) *Service {
-	return &Service{store: store}
+// Service registers tag sets and tags text against them.
+type Service struct {
+	store  *Store
+	tagger Tagger
+}
+
+// NewService creates a tagging service backed by the given store and tagger.
+func NewService(store *Store, tg Tagger) *Service {
+	return &Service{store: store, tagger: tg}
 }
 
 // RegisterSet validates and stores a tag set. A set with the same name is
@@ -70,18 +76,17 @@ func (s *Service) RegisterSet(ctx context.Context, name string, tags []Tag) erro
 	return nil
 }
 
-// Tag applies the named tag set to text. The tagger agent does not exist yet,
-// so after validating the request and confirming the set exists this returns
-// ErrNotImplemented.
-//
-// TODO: invoke the tagger agent with the set's tags and text, and return the
-// tags that apply.
-func (s *Service) Tag(ctx context.Context, setName, text string) ([]Tag, error) {
+// Tag applies the named tag set to text and returns the single best-matching
+// tag. It returns (nil, nil) when no tag applies.
+func (s *Service) Tag(ctx context.Context, setName, text string) (*Match, error) {
 	if err := ctx.Err(); err != nil {
 		return nil, err
 	}
 	if s.store == nil {
 		return nil, errors.New("tagging: no store configured")
+	}
+	if s.tagger == nil {
+		return nil, errors.New("tagging: no tagger configured")
 	}
 
 	setName = strings.TrimSpace(setName)
@@ -91,9 +96,36 @@ func (s *Service) Tag(ctx context.Context, setName, text string) ([]Tag, error) 
 	if strings.TrimSpace(text) == "" {
 		return nil, fmt.Errorf("%w: text is required", ErrInvalidTagSet)
 	}
-	if _, ok := s.store.Get(setName); !ok {
+	set, ok := s.store.Get(setName)
+	if !ok {
 		return nil, fmt.Errorf("%w: %q", ErrTagSetNotFound, setName)
 	}
 
-	return nil, ErrNotImplemented
+	result, err := s.tagger.Run(ctx, toAgentTags(set.Tags), text)
+	if err != nil {
+		return nil, fmt.Errorf("tagger run: %w", err)
+	}
+	if result.Name == "" {
+		return nil, nil
+	}
+
+	for _, tag := range set.Tags {
+		if tag.Name == result.Name {
+			return &Match{Tag: tag, Reason: result.Reason}, nil
+		}
+	}
+	return nil, nil
+}
+
+// toAgentTags converts stored tag definitions into the tagger agent's input type.
+func toAgentTags(tags []Tag) []tagger.Tag {
+	out := make([]tagger.Tag, 0, len(tags))
+	for _, tag := range tags {
+		out = append(out, tagger.Tag{
+			Name:        tag.Name,
+			Description: tag.Description,
+			ApplyRule:   tag.ApplyRule,
+		})
+	}
+	return out
 }

@@ -15,3 +15,10 @@ type TagSet struct {
 	Name string
 	Tags []Tag
 }
+
+// Match is the best-matching tag for a piece of text together with the tagger's
+// reason for choosing it.
+type Match struct {
+	Tag    Tag
+	Reason string
+}

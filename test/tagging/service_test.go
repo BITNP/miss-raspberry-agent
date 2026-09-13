@@ -3,30 +3,64 @@ package tagging_test
 import (
 	"context"
 	"errors"
+	"strings"
 	"testing"
 
+	"miss-raspberry-agent/internal/agent/tagger"
 	"miss-raspberry-agent/internal/tagging"
 )
 
-func TestRegisterSetStoresSet(t *testing.T) {
-	svc := tagging.NewService(tagging.NewStore())
+// fakeTagger lets tests control the tagger agent's answer without a model.
+type fakeTagger struct {
+	result tagger.Result
+	err    error
 
-	err := svc.RegisterSet(context.Background(), "sentiment", []tagging.Tag{
+	calls int
+	tags  []tagger.Tag
+	text  string
+}
+
+func (f *fakeTagger) Run(_ context.Context, tags []tagger.Tag, text string) (tagger.Result, error) {
+	f.calls++
+	f.tags = tags
+	f.text = text
+	return f.result, f.err
+}
+
+func sentimentSet() []tagging.Tag {
+	return []tagging.Tag{
 		{Name: "positive", Description: "praise", ApplyRule: "the text is positive"},
-	})
-	if err != nil {
+		{Name: "negative", Description: "complaint", ApplyRule: "the text is negative"},
+	}
+}
+
+func TestRegisterSetStoresSet(t *testing.T) {
+	fake := &fakeTagger{result: tagger.Result{Name: "positive", Reason: "praise"}}
+	svc := tagging.NewService(tagging.NewStore(), fake)
+	ctx := context.Background()
+
+	if err := svc.RegisterSet(ctx, "sentiment", sentimentSet()); err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	_, err = svc.Tag(context.Background(), "sentiment", "hello")
-	if !errors.Is(err, tagging.ErrNotImplemented) {
-		t.Fatalf("expected ErrNotImplemented for a stored set, got %v", err)
+	match, err := svc.Tag(ctx, "sentiment", "I love it")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if match == nil || match.Tag.Name != "positive" || match.Reason != "praise" {
+		t.Fatalf("unexpected match: %+v", match)
+	}
+	if match.Tag.Description != "praise" {
+		t.Errorf("match should carry the stored description, got %q", match.Tag.Description)
+	}
+	if fake.calls != 1 || fake.text != "I love it" || len(fake.tags) != 2 {
+		t.Errorf("unexpected tagger call: calls=%d text=%q tags=%+v", fake.calls, fake.text, fake.tags)
 	}
 }
 
 func TestRegisterSetReplacesSameName(t *testing.T) {
 	store := tagging.NewStore()
-	svc := tagging.NewService(store)
+	svc := tagging.NewService(store, &fakeTagger{})
 	ctx := context.Background()
 
 	if err := svc.RegisterSet(ctx, "sentiment", []tagging.Tag{{Name: "a", ApplyRule: "r"}}); err != nil {
@@ -49,7 +83,7 @@ func TestRegisterSetReplacesSameName(t *testing.T) {
 }
 
 func TestRegisterSetRejectsDuplicateTagNames(t *testing.T) {
-	svc := tagging.NewService(tagging.NewStore())
+	svc := tagging.NewService(tagging.NewStore(), &fakeTagger{})
 
 	err := svc.RegisterSet(context.Background(), "s", []tagging.Tag{
 		{Name: "a", ApplyRule: "r"},
@@ -73,7 +107,7 @@ func TestRegisterSetRejectsInvalidInput(t *testing.T) {
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			svc := tagging.NewService(tagging.NewStore())
+			svc := tagging.NewService(tagging.NewStore(), &fakeTagger{})
 			err := svc.RegisterSet(context.Background(), tc.set, tc.tags)
 			if !errors.Is(err, tagging.ErrInvalidTagSet) {
 				t.Fatalf("expected ErrInvalidTagSet, got %v", err)
@@ -83,7 +117,8 @@ func TestRegisterSetRejectsInvalidInput(t *testing.T) {
 }
 
 func TestTagRejectsInvalidInput(t *testing.T) {
-	svc := tagging.NewService(tagging.NewStore())
+	fake := &fakeTagger{}
+	svc := tagging.NewService(tagging.NewStore(), fake)
 	ctx := context.Background()
 
 	if err := svc.RegisterSet(ctx, "s", []tagging.Tag{{Name: "a", ApplyRule: "r"}}); err != nil {
@@ -107,5 +142,65 @@ func TestTagRejectsInvalidInput(t *testing.T) {
 				t.Fatalf("expected %v, got %v", tc.want, err)
 			}
 		})
+	}
+	if fake.calls != 0 {
+		t.Errorf("tagger should not run on invalid input, ran %d times", fake.calls)
+	}
+}
+
+func TestTagNoMatch(t *testing.T) {
+	svc := tagging.NewService(tagging.NewStore(), &fakeTagger{result: tagger.Result{}})
+	ctx := context.Background()
+
+	if err := svc.RegisterSet(ctx, "sentiment", sentimentSet()); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	match, err := svc.Tag(ctx, "sentiment", "nothing notable")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if match != nil {
+		t.Fatalf("expected no match, got %+v", match)
+	}
+}
+
+func TestTagUnknownModelTagIsNoMatch(t *testing.T) {
+	svc := tagging.NewService(tagging.NewStore(), &fakeTagger{result: tagger.Result{Name: "invented", Reason: "x"}})
+	ctx := context.Background()
+
+	if err := svc.RegisterSet(ctx, "sentiment", sentimentSet()); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	match, err := svc.Tag(ctx, "sentiment", "text")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if match != nil {
+		t.Fatalf("expected unknown tag to be dropped, got %+v", match)
+	}
+}
+
+func TestTagTaggerErrorIsWrapped(t *testing.T) {
+	svc := tagging.NewService(tagging.NewStore(), &fakeTagger{err: errors.New("boom")})
+	ctx := context.Background()
+
+	if err := svc.RegisterSet(ctx, "sentiment", sentimentSet()); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	_, err := svc.Tag(ctx, "sentiment", "text")
+	if err == nil || !strings.Contains(err.Error(), "boom") {
+		t.Fatalf("expected wrapped tagger error, got %v", err)
+	}
+}
+
+func TestTagMissingTagger(t *testing.T) {
+	svc := tagging.NewService(tagging.NewStore(), nil)
+
+	err := svc.RegisterSet(context.Background(), "s", []tagging.Tag{{Name: "a", ApplyRule: "r"}})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if _, err := svc.Tag(context.Background(), "s", "text"); err == nil {
+		t.Fatal("expected error when no tagger is configured")
 	}
 }
