@@ -23,7 +23,7 @@ type fakeTagger struct {
 	err    error
 }
 
-func (f *fakeTagger) Run(context.Context, []tagger.Tag, string) (tagger.Result, error) {
+func (f *fakeTagger) Run(context.Context, tagger.TagSet, string) (tagger.Result, error) {
 	return f.result, f.err
 }
 
@@ -37,7 +37,7 @@ func newTaggerTestRouter() (*gin.Engine, *fakeTagger) {
 	return router, fake
 }
 
-const tagSetBody = `{"name":"sentiment","tags":[{"name":"positive","description":"praise","apply_rule":"the text is positive"},{"name":"negative","description":"complaint","apply_rule":"the text is negative"}]}`
+const tagSetBody = `{"name":"sentiment","prompt":"Tag the text by its sentiment.","tags":[{"name":"positive","description":"praise","apply_rule":"the text is positive"},{"name":"negative","description":"complaint","apply_rule":"the text is negative"}]}`
 
 func TestRegisterTagSetAccepted(t *testing.T) {
 	router, _ := newTestRouter()
@@ -65,10 +65,12 @@ func TestRegisterTagSetRejectsBadRequests(t *testing.T) {
 		want int
 	}{
 		{"malformed json", `{"name":`, http.StatusBadRequest},
-		{"missing name", `{"tags":[{"name":"a","apply_rule":"r"}]}`, http.StatusBadRequest},
-		{"empty tags", `{"name":"s","tags":[]}`, http.StatusBadRequest},
-		{"missing apply rule", `{"name":"s","tags":[{"name":"a"}]}`, http.StatusBadRequest},
-		{"duplicate tag names", `{"name":"s","tags":[{"name":"a","apply_rule":"r"},{"name":"a","apply_rule":"r"}]}`, http.StatusBadRequest},
+		{"missing name", `{"prompt":"p","tags":[{"name":"a","apply_rule":"r"}]}`, http.StatusBadRequest},
+		{"missing prompt", `{"name":"s","tags":[{"name":"a","apply_rule":"r"}]}`, http.StatusBadRequest},
+		{"blank prompt", `{"name":"s","prompt":" ","tags":[{"name":"a","apply_rule":"r"}]}`, http.StatusBadRequest},
+		{"empty tags", `{"name":"s","prompt":"p","tags":[]}`, http.StatusBadRequest},
+		{"missing apply rule", `{"name":"s","prompt":"p","tags":[{"name":"a"}]}`, http.StatusBadRequest},
+		{"duplicate tag names", `{"name":"s","prompt":"p","tags":[{"name":"a","apply_rule":"r"},{"name":"a","apply_rule":"r"}]}`, http.StatusBadRequest},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {

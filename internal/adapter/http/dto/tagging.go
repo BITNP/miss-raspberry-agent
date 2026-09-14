@@ -2,8 +2,9 @@ package dto
 
 // RegisterTagSetRequest is the body of POST /api/v1/agents/tagger/tag-sets.
 type RegisterTagSetRequest struct {
-	Name string          `json:"name" binding:"required"`
-	Tags []TagDefinition `json:"tags" binding:"required,min=1,dive"`
+	Name   string          `json:"name" binding:"required"`
+	Prompt string          `json:"prompt" binding:"required"`
+	Tags   []TagDefinition `json:"tags" binding:"required,min=1,dive"`
 }
 
 // TagDefinition is one tag inside a RegisterTagSetRequest.

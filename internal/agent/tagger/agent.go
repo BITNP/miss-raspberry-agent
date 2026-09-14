@@ -13,8 +13,13 @@ import (
 
 // taggerSystemPrompt instructs the LLM to select the single best-matching tag.
 const taggerSystemPrompt = `You are a precise text tagger.
-You are given a set of tags. Each tag has a name, an optional description, and an
-"apply_rule" written in natural language. You are also given a text to tag.
+You are given a tag set with a general prompt that describes the function of the set and
+how you should mark text within it. You are also given the set's tags. Each tag has a name,
+an optional description, and an "apply_rule" written in natural language. Finally, you are
+given a text to tag.
+
+Follow the tag set's general prompt: it states the purpose of the set and any notice you
+must heed when marking something within this set.
 
 Choose the ONE tag whose apply_rule best matches the text. If no tag applies, choose none.
 Judge the text fairly regardless of the language it is written in, and write the "reason"
@@ -36,11 +41,14 @@ func NewTagger(chat model.BaseChatModel) *Tagger {
 	return &Tagger{chat: chat}
 }
 
-// Run picks the single best-matching tag for text from tags. A Result with an
+// Run picks the single best-matching tag for text from set. A Result with an
 // empty Name means no tag applies.
-func (t *Tagger) Run(ctx context.Context, tags []Tag, text string) (Result, error) {
-	if len(tags) == 0 {
+func (t *Tagger) Run(ctx context.Context, set TagSet, text string) (Result, error) {
+	if len(set.Tags) == 0 {
 		return Result{}, errors.New("tagger: at least one tag is required")
+	}
+	if strings.TrimSpace(set.Prompt) == "" {
+		return Result{}, errors.New("tagger: set prompt is required")
 	}
 	if strings.TrimSpace(text) == "" {
 		return Result{}, errors.New("tagger: text is required")
@@ -50,7 +58,7 @@ func (t *Tagger) Run(ctx context.Context, tags []Tag, text string) (Result, erro
 		ctx,
 		[]*schema.Message{
 			schema.SystemMessage(taggerSystemPrompt),
-			schema.UserMessage(buildTagInput(tags, text)),
+			schema.UserMessage(buildTagInput(set, text)),
 		},
 		model.WithTemperature(0),
 	)
@@ -62,14 +70,19 @@ func (t *Tagger) Run(ctx context.Context, tags []Tag, text string) (Result, erro
 	if err != nil {
 		return Result{}, fmt.Errorf("parse model output: %w", err)
 	}
-	return normalizeResult(result, tags)
+	return normalizeResult(result, set.Tags)
 }
 
-// buildTagInput renders the tag definitions and the target text for the model.
-func buildTagInput(tags []Tag, text string) string {
+// buildTagInput renders the tag set (general prompt and tags) and the target text
+// for the model.
+func buildTagInput(set TagSet, text string) string {
 	var sb strings.Builder
-	sb.WriteString("Tags:\n")
-	for i, tag := range tags {
+	if set.Name != "" {
+		fmt.Fprintf(&sb, "Tag set: %s\n", set.Name)
+	}
+	fmt.Fprintf(&sb, "Set instructions: %s\n", set.Prompt)
+	sb.WriteString("\nTags:\n")
+	for i, tag := range set.Tags {
 		fmt.Fprintf(&sb, "%d. name: %s\n", i+1, tag.Name)
 		if tag.Description != "" {
 			fmt.Fprintf(&sb, "   description: %s\n", tag.Description)

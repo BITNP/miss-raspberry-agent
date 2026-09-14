@@ -12,10 +12,14 @@ import (
 	"miss-raspberry-agent/internal/agent/tagger"
 )
 
-func testTags() []tagger.Tag {
-	return []tagger.Tag{
-		{Name: "positive", Description: "praise", ApplyRule: "the text is positive"},
-		{Name: "negative", Description: "complaint", ApplyRule: "the text is negative"},
+func testSet() tagger.TagSet {
+	return tagger.TagSet{
+		Name:   "sentiment",
+		Prompt: "Tag the text by its sentiment.",
+		Tags: []tagger.Tag{
+			{Name: "positive", Description: "praise", ApplyRule: "the text is positive"},
+			{Name: "negative", Description: "complaint", ApplyRule: "the text is negative"},
+		},
 	}
 }
 
@@ -27,7 +31,7 @@ func newTaggerForTest(content string, err error) (*tagger.Tagger, *fakeChatModel
 func TestTaggerRunReturnsBestMatch(t *testing.T) {
 	tg, fake := newTaggerForTest(`{"name":"positive","reason":"expresses praise"}`, nil)
 
-	result, err := tg.Run(context.Background(), testTags(), "I love this update")
+	result, err := tg.Run(context.Background(), testSet(), "I love this update")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -47,6 +51,9 @@ func TestTaggerRunReturnsBestMatch(t *testing.T) {
 		!strings.Contains(fake.messages[1].Content, "I love this update") {
 		t.Errorf("user prompt missing tag rules or text: %q", fake.messages[1].Content)
 	}
+	if !strings.Contains(fake.messages[1].Content, "Tag the text by its sentiment.") {
+		t.Errorf("user prompt missing set prompt: %q", fake.messages[1].Content)
+	}
 
 	opts := model.GetCommonOptions(nil, fake.options...)
 	if opts.Temperature == nil || *opts.Temperature != 0 {
@@ -57,7 +64,7 @@ func TestTaggerRunReturnsBestMatch(t *testing.T) {
 func TestTaggerRunNoMatch(t *testing.T) {
 	tg, _ := newTaggerForTest(`{"name":"","reason":""}`, nil)
 
-	result, err := tg.Run(context.Background(), testTags(), "no opinion here")
+	result, err := tg.Run(context.Background(), testSet(), "no opinion here")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -69,7 +76,7 @@ func TestTaggerRunNoMatch(t *testing.T) {
 func TestTaggerRunIgnoresUnknownTag(t *testing.T) {
 	tg, _ := newTaggerForTest(`{"name":"hallucinated","reason":"made up"}`, nil)
 
-	result, err := tg.Run(context.Background(), testTags(), "some text")
+	result, err := tg.Run(context.Background(), testSet(), "some text")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -81,7 +88,7 @@ func TestTaggerRunIgnoresUnknownTag(t *testing.T) {
 func TestTaggerRunRequiresReasonWhenSelected(t *testing.T) {
 	tg, _ := newTaggerForTest(`{"name":"positive","reason":""}`, nil)
 
-	_, err := tg.Run(context.Background(), testTags(), "some text")
+	_, err := tg.Run(context.Background(), testSet(), "some text")
 	if err == nil || !strings.Contains(err.Error(), "reason is required") {
 		t.Fatalf("expected reason-required error, got %v", err)
 	}
@@ -91,7 +98,7 @@ func TestTaggerRunParsesFencedOutput(t *testing.T) {
 	fenced := "```json\n" + `{"name":"negative","reason":"complaint"}` + "\n```"
 	tg, _ := newTaggerForTest(fenced, nil)
 
-	result, err := tg.Run(context.Background(), testTags(), "this is terrible")
+	result, err := tg.Run(context.Background(), testSet(), "this is terrible")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -103,10 +110,15 @@ func TestTaggerRunParsesFencedOutput(t *testing.T) {
 func TestTaggerRunRejectsInvalidInput(t *testing.T) {
 	tg, _ := newTaggerForTest(`{"name":"positive","reason":"praise"}`, nil)
 
-	if _, err := tg.Run(context.Background(), nil, "text"); err == nil {
+	if _, err := tg.Run(context.Background(), tagger.TagSet{}, "text"); err == nil {
 		t.Error("expected error for no tags")
 	}
-	if _, err := tg.Run(context.Background(), testTags(), "  "); err == nil {
+	noPrompt := testSet()
+	noPrompt.Prompt = "  "
+	if _, err := tg.Run(context.Background(), noPrompt, "text"); err == nil {
+		t.Error("expected error for blank set prompt")
+	}
+	if _, err := tg.Run(context.Background(), testSet(), "  "); err == nil {
 		t.Error("expected error for blank text")
 	}
 }
@@ -126,7 +138,7 @@ func TestTaggerRunInvalidModelOutput(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			tg, fake := newTaggerForTest(tt.content, tt.genErr)
 
-			if _, err := tg.Run(context.Background(), testTags(), "some text"); err == nil {
+			if _, err := tg.Run(context.Background(), testSet(), "some text"); err == nil {
 				t.Fatal("expected error")
 			}
 			if fake.calls != 1 {

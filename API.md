@@ -99,15 +99,18 @@ curl -X POST http://127.0.0.1:4514/api/v1/agents/main/messages \
 ### `POST /api/v1/agents/tagger/tag-sets`
 
 **Description:** Registers (or replaces) a named tag set. Tag sets live in memory: they are
-lost when the process restarts. Each tag has a `name`, an optional `description`, and an
-`apply_rule` written in natural language. Registering a set whose `name` already exists
-replaces the previous set entirely. Tag names must be unique within a set.
+lost when the process restarts. Each set carries a `prompt`: a general instruction describing
+the function of the set and the notice the tagger must follow when marking text within it.
+Each tag has a `name`, an optional `description`, and an `apply_rule` written in natural
+language. Registering a set whose `name` already exists replaces the previous set entirely.
+Tag names must be unique within a set.
 
 **Request body**
 
 | Field | Type | Required | Description |
 | --- | --- | --- | --- |
 | `name` | string | yes | Name of the tag set. Non-blank. Used as the key for replacement and later tagging. |
+| `prompt` | string | yes | General prompt describing the function of the set and the notice for the tagger when marking text within it. Non-blank. |
 | `tags` | array | yes | At least one tag definition. |
 | `tags[].name` | string | yes | Tag name. Must be unique within the set. Non-blank. |
 | `tags[].description` | string | no | What the tag means. |
@@ -116,6 +119,7 @@ replaces the previous set entirely. Tag names must be unique within a set.
 ```json
 {
   "name": "sentiment",
+  "prompt": "Tag the text by its sentiment. Only mark text that expresses a clear opinion.",
   "tags": [
     { "name": "positive", "description": "Praise or approval", "apply_rule": "The text expresses praise, approval, or satisfaction." },
     { "name": "negative", "description": "Complaint or disapproval", "apply_rule": "The text expresses criticism, complaint, or dissatisfaction." }
@@ -143,7 +147,7 @@ within the set), `401` (bad token).
 curl -X POST http://127.0.0.1:4514/api/v1/agents/tagger/tag-sets \
   -H "Authorization: Bearer $API_TOKEN" \
   -H "Content-Type: application/json" \
-  -d '{"name":"sentiment","tags":[{"name":"positive","description":"Praise or approval","apply_rule":"The text expresses praise, approval, or satisfaction."},{"name":"negative","description":"Complaint or disapproval","apply_rule":"The text expresses criticism, complaint, or dissatisfaction."}]}'
+  -d '{"name":"sentiment","prompt":"Tag the text by its sentiment. Only mark text that expresses a clear opinion.","tags":[{"name":"positive","description":"Praise or approval","apply_rule":"The text expresses praise, approval, or satisfaction."},{"name":"negative","description":"Complaint or disapproval","apply_rule":"The text expresses criticism, complaint, or dissatisfaction."}]}'
 ```
 
 ### `POST /api/v1/agents/tagger/tag`
