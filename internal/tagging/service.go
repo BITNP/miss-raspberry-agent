@@ -21,7 +21,7 @@ var ErrTagSetNotFound = errors.New("tag set not found")
 // Tagger selects the best-matching tag for a text. It is satisfied by
 // agent/tagger.Tagger and is defined here, next to its consumer.
 type Tagger interface {
-	Run(ctx context.Context, tags []tagger.Tag, text string) (tagger.Result, error)
+	Run(ctx context.Context, set tagger.TagSet, text string) (tagger.Result, error)
 }
 
 // Service registers tag sets and tags text against them.
@@ -37,7 +37,7 @@ func NewService(store *Store, tg Tagger) *Service {
 
 // RegisterSet validates and stores a tag set. A set with the same name is
 // replaced. Tags with duplicate names within the request are rejected.
-func (s *Service) RegisterSet(ctx context.Context, name string, tags []Tag) error {
+func (s *Service) RegisterSet(ctx context.Context, set TagSet) error {
 	if err := ctx.Err(); err != nil {
 		return err
 	}
@@ -45,17 +45,21 @@ func (s *Service) RegisterSet(ctx context.Context, name string, tags []Tag) erro
 		return errors.New("tagging: no store configured")
 	}
 
-	name = strings.TrimSpace(name)
-	if name == "" {
+	set.Name = strings.TrimSpace(set.Name)
+	if set.Name == "" {
 		return fmt.Errorf("%w: name is required", ErrInvalidTagSet)
 	}
-	if len(tags) == 0 {
+	set.Prompt = strings.TrimSpace(set.Prompt)
+	if set.Prompt == "" {
+		return fmt.Errorf("%w: prompt is required", ErrInvalidTagSet)
+	}
+	if len(set.Tags) == 0 {
 		return fmt.Errorf("%w: at least one tag is required", ErrInvalidTagSet)
 	}
 
-	seen := make(map[string]struct{}, len(tags))
-	cleaned := make([]Tag, 0, len(tags))
-	for i, tag := range tags {
+	seen := make(map[string]struct{}, len(set.Tags))
+	cleaned := make([]Tag, 0, len(set.Tags))
+	for i, tag := range set.Tags {
 		tag.Name = strings.TrimSpace(tag.Name)
 		tag.Description = strings.TrimSpace(tag.Description)
 		tag.ApplyRule = strings.TrimSpace(tag.ApplyRule)
@@ -71,8 +75,9 @@ func (s *Service) RegisterSet(ctx context.Context, name string, tags []Tag) erro
 		seen[tag.Name] = struct{}{}
 		cleaned = append(cleaned, tag)
 	}
+	set.Tags = cleaned
 
-	s.store.Replace(TagSet{Name: name, Tags: cleaned})
+	s.store.Replace(set)
 	return nil
 }
 
@@ -101,7 +106,7 @@ func (s *Service) Tag(ctx context.Context, setName, text string) (*Match, error)
 		return nil, fmt.Errorf("%w: %q", ErrTagSetNotFound, setName)
 	}
 
-	result, err := s.tagger.Run(ctx, toAgentTags(set.Tags), text)
+	result, err := s.tagger.Run(ctx, toAgentSet(set), text)
 	if err != nil {
 		return nil, fmt.Errorf("tagger run: %w", err)
 	}
@@ -117,11 +122,15 @@ func (s *Service) Tag(ctx context.Context, setName, text string) (*Match, error)
 	return nil, nil
 }
 
-// toAgentTags converts stored tag definitions into the tagger agent's input type.
-func toAgentTags(tags []Tag) []tagger.Tag {
-	out := make([]tagger.Tag, 0, len(tags))
-	for _, tag := range tags {
-		out = append(out, tagger.Tag{
+// toAgentSet converts a stored tag set into the tagger agent's input type.
+func toAgentSet(set TagSet) tagger.TagSet {
+	out := tagger.TagSet{
+		Name:   set.Name,
+		Prompt: set.Prompt,
+		Tags:   make([]tagger.Tag, 0, len(set.Tags)),
+	}
+	for _, tag := range set.Tags {
+		out.Tags = append(out.Tags, tagger.Tag{
 			Name:        tag.Name,
 			Description: tag.Description,
 			ApplyRule:   tag.ApplyRule,

@@ -13,7 +13,7 @@ import (
 
 // TaggingService is the application service the tagging handler depends on.
 type TaggingService interface {
-	RegisterSet(ctx context.Context, name string, tags []tagging.Tag) error
+	RegisterSet(ctx context.Context, set tagging.TagSet) error
 	Tag(ctx context.Context, setName, text string) (*tagging.Match, error)
 }
 
@@ -45,7 +45,8 @@ func (h *TaggingHandler) RegisterSet(c *gin.Context) {
 		})
 	}
 
-	if err := h.service.RegisterSet(c.Request.Context(), req.Name, tags); err != nil {
+	set := tagging.TagSet{Name: req.Name, Prompt: req.Prompt, Tags: tags}
+	if err := h.service.RegisterSet(c.Request.Context(), set); err != nil {
 		switch {
 		case errors.Is(err, tagging.ErrInvalidTagSet), errors.Is(err, tagging.ErrDuplicateTagName):
 			c.JSON(http.StatusBadRequest, dto.ErrorResponse{Error: err.Error()})

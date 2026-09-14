@@ -20,7 +20,7 @@ const (
 	defaultBaseURL            = "https://api.openai.com/v1"
 	defaultModelStr           = "gpt-4o-mini"
 	defaultNapcatWebSocketURL = "ws://127.0.0.1:3001"
-	defaultHTTPAddr           = ":8080"
+	defaultHTTPAddr           = ":4514"
 )
 
 // Config is the top-level application configuration.

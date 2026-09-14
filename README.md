@@ -47,7 +47,7 @@ Copy `.env.example` to `.env` and fill in real values. `cmd/server/main.go` load
 | `MODEL_NAME` | no | `gpt-4o-mini` | Model ID |
 | `NAPCAT_WS_URL` | no | `ws://127.0.0.1:3001` | NapCat WebSocket server address |
 | `NAPCAT_ACCESS_TOKEN` | no | empty | Bearer token if NapCat WS server requires one |
-| `HTTP_ADDR` | no | `:8080` | Address the HTTP API listens on |
+| `HTTP_ADDR` | no | `:4514` | Address the HTTP API listens on |
 | `API_TOKEN` | yes | — | Bearer token required by the HTTP API |
 
 ## HTTP API
@@ -58,7 +58,7 @@ them with a tagger agent. It requires a bearer token (`API_TOKEN`). See [`API.md
 the full reference, request/response shapes, and curl examples.
 
 ```bash
-curl -X POST http://127.0.0.1:8080/api/v1/agents/main/messages \
+curl -X POST http://127.0.0.1:4514/api/v1/agents/main/messages \
   -H "Authorization: Bearer $API_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{"platform":"qq","target_id":"10001","content":"你好","context":"初次打招呼"}'

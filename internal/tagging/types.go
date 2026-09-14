@@ -10,10 +10,13 @@ type Tag struct {
 }
 
 // TagSet is a named collection of tags. A set is keyed by Name: registering a
-// set with an existing name replaces the previous one.
+// set with an existing name replaces the previous one. Prompt is a general
+// instruction describing the function of the set and the notice the tagger must
+// follow when marking text within it.
 type TagSet struct {
-	Name string
-	Tags []Tag
+	Name   string
+	Prompt string
+	Tags   []Tag
 }
 
 // Match is the best-matching tag for a piece of text together with the tagger's

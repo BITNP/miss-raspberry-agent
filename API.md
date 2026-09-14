@@ -1,6 +1,6 @@
 # API Reference
 
-HTTP API for `miss-raspberry-agent`. The server listens on `HTTP_ADDR` (default `:8080`) and
+HTTP API for `miss-raspberry-agent`. The server listens on `HTTP_ADDR` (default `:4514`) and
 speaks JSON. All request/response bodies are UTF-8 JSON.
 
 ## Authentication
@@ -49,7 +49,7 @@ All errors share one shape:
 **curl**
 
 ```bash
-curl http://127.0.0.1:8080/healthz
+curl http://127.0.0.1:4514/healthz
 ```
 
 ### `POST /api/v1/agents/main/messages`
@@ -90,7 +90,7 @@ immediately. The agent processes the queue asynchronously.
 **curl**
 
 ```bash
-curl -X POST http://127.0.0.1:8080/api/v1/agents/main/messages \
+curl -X POST http://127.0.0.1:4514/api/v1/agents/main/messages \
   -H "Authorization: Bearer $API_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{"platform":"qq","target_id":"10001","content":"你好","context":"初次打招呼"}'
@@ -99,15 +99,18 @@ curl -X POST http://127.0.0.1:8080/api/v1/agents/main/messages \
 ### `POST /api/v1/agents/tagger/tag-sets`
 
 **Description:** Registers (or replaces) a named tag set. Tag sets live in memory: they are
-lost when the process restarts. Each tag has a `name`, an optional `description`, and an
-`apply_rule` written in natural language. Registering a set whose `name` already exists
-replaces the previous set entirely. Tag names must be unique within a set.
+lost when the process restarts. Each set carries a `prompt`: a general instruction describing
+the function of the set and the notice the tagger must follow when marking text within it.
+Each tag has a `name`, an optional `description`, and an `apply_rule` written in natural
+language. Registering a set whose `name` already exists replaces the previous set entirely.
+Tag names must be unique within a set.
 
 **Request body**
 
 | Field | Type | Required | Description |
 | --- | --- | --- | --- |
 | `name` | string | yes | Name of the tag set. Non-blank. Used as the key for replacement and later tagging. |
+| `prompt` | string | yes | General prompt describing the function of the set and the notice for the tagger when marking text within it. Non-blank. |
 | `tags` | array | yes | At least one tag definition. |
 | `tags[].name` | string | yes | Tag name. Must be unique within the set. Non-blank. |
 | `tags[].description` | string | no | What the tag means. |
@@ -116,6 +119,7 @@ replaces the previous set entirely. Tag names must be unique within a set.
 ```json
 {
   "name": "sentiment",
+  "prompt": "Tag the text by its sentiment. Only mark text that expresses a clear opinion.",
   "tags": [
     { "name": "positive", "description": "Praise or approval", "apply_rule": "The text expresses praise, approval, or satisfaction." },
     { "name": "negative", "description": "Complaint or disapproval", "apply_rule": "The text expresses criticism, complaint, or dissatisfaction." }
@@ -140,10 +144,10 @@ within the set), `401` (bad token).
 **curl**
 
 ```bash
-curl -X POST http://127.0.0.1:8080/api/v1/agents/tagger/tag-sets \
+curl -X POST http://127.0.0.1:4514/api/v1/agents/tagger/tag-sets \
   -H "Authorization: Bearer $API_TOKEN" \
   -H "Content-Type: application/json" \
-  -d '{"name":"sentiment","tags":[{"name":"positive","description":"Praise or approval","apply_rule":"The text expresses praise, approval, or satisfaction."},{"name":"negative","description":"Complaint or disapproval","apply_rule":"The text expresses criticism, complaint, or dissatisfaction."}]}'
+  -d '{"name":"sentiment","prompt":"Tag the text by its sentiment. Only mark text that expresses a clear opinion.","tags":[{"name":"positive","description":"Praise or approval","apply_rule":"The text expresses praise, approval, or satisfaction."},{"name":"negative","description":"Complaint or disapproval","apply_rule":"The text expresses criticism, complaint, or dissatisfaction."}]}'
 ```
 
 ### `POST /api/v1/agents/tagger/tag`
@@ -194,7 +198,7 @@ No match:
 **curl**
 
 ```bash
-curl -X POST http://127.0.0.1:8080/api/v1/agents/tagger/tag \
+curl -X POST http://127.0.0.1:4514/api/v1/agents/tagger/tag \
   -H "Authorization: Bearer $API_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{"name":"sentiment","text":"I really love this update!"}'
@@ -204,5 +208,5 @@ curl -X POST http://127.0.0.1:8080/api/v1/agents/tagger/tag \
 
 | Variable | Default | Description |
 | --- | --- | --- |
-| `HTTP_ADDR` | `:8080` | Address the HTTP API listens on |
+| `HTTP_ADDR` | `:4514` | Address the HTTP API listens on |
 | `API_TOKEN` | — (required) | Bearer token for `/api/v1/*` |
