@@ -6,6 +6,10 @@ services:
     environment:
       NAPCAT_UID: "1000"
       NAPCAT_GID: "1000"
+      # QQ account NapCat should quick-login automatically after the first QR
+      # login. The value comes from the gitignored .env (compose interpolation),
+      # never from this tracked file.
+      NAPCAT_QUICK_ACCOUNT: "${NAPCAT_QUICK_ACCOUNT:-}"
     ports:
       - "127.0.0.1:3001:3001"
       - "127.0.0.1:6099:6099"

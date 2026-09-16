@@ -5,6 +5,9 @@ __pycache__/
 
 # Ignore all NapCat runtime data (QQ session, caches, per-account config)
 # except the default OneBot11 config, which is tracked for reproducible setup.
+# Per-account files embed the QQ number in their filenames (napcat_<qq>.json,
+# onebot11_<qq>.json, napcat_protocol_<qq>.json) and webui.json/passkey.json
+# hold secrets or the auto-login account: keep them all untracked.
 napcat/*
 !napcat/config/
 napcat/config/*

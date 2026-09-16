@@ -38,7 +38,8 @@ LLM (OpenAI-compatible, e.g. DeepSeek)
 ## Configuration
 
 Copy `.env.example` to `.env` and fill in real values. `cmd/server/main.go` loads
-`.env` automatically; do not commit the real `.env` (it is gitignored).
+`.env` automatically, and `docker compose` reads the same file for interpolation;
+do not commit the real `.env` (it is gitignored).
 
 | Variable | Required | Default | Description |
 | --- | --- | --- | --- |
@@ -47,6 +48,7 @@ Copy `.env.example` to `.env` and fill in real values. `cmd/server/main.go` load
 | `MODEL_NAME` | no | `gpt-4o-mini` | Model ID |
 | `NAPCAT_WS_URL` | no | `ws://127.0.0.1:3001` | NapCat WebSocket server address |
 | `NAPCAT_ACCESS_TOKEN` | no | empty | Bearer token if NapCat WS server requires one |
+| `NAPCAT_QUICK_ACCOUNT` | no | empty | QQ number NapCat quick-logins with on startup; used by docker compose, not the Go app |
 | `HTTP_ADDR` | no | `:4514` | Address the HTTP API listens on |
 | `API_TOKEN` | yes | — | Bearer token required by the HTTP API |
 
@@ -79,6 +81,12 @@ docker logs -f napcat        # first run prints the WebUI login token
   `napcat/config/onebot11.json`, so no manual WebUI network setup is needed. Its `token`
   is empty; if you set `NAPCAT_ACCESS_TOKEN`, set the same value there (or in the
   per-account `onebot11_<qq>.json` that NapCat writes).
+- **Auto-login after the first QR login.** The QQ session persists in `./napcat/QQ`, so
+  set `NAPCAT_QUICK_ACCOUNT` in `.env` to your QQ number and `docker compose up -d`
+  again. NapCat then quick-logins that account on every start instead of showing a QR
+  code. Keep the value in the gitignored `.env` — never hardcode it in `compose.yaml`,
+  `README.md`, or any other tracked file. Leave the variable empty to require a manual
+  login. Quick-login tokens can still expire on Tencent's side and force a new QR scan.
 
 On SELinux hosts (e.g. Fedora) the compose bind mounts use the `:z` label so the
 container can read `./napcat/`. No further action is needed.
@@ -147,6 +155,10 @@ Complete the QR login as in the local steps; the WebSocket 服务器 on port `30
 from the tracked `napcat/config/onebot11.json`, so no manual network setup is needed. The
 QQ session persists in `./napcat/QQ` across restarts.
 
+After that first login, set `NAPCAT_QUICK_ACCOUNT` in the server's `.env` (see
+[Configuration](#configuration)) and `docker compose up -d` once more, so NapCat
+quick-logins on boot instead of waiting for a QR scan.
+
 ### 3. Build the agent
 
 ```bash
@@ -193,4 +205,7 @@ environment (it also tolerates a `.env` in the working directory).
 - `MODEL_API_KEY` and `NAPCAT_ACCESS_TOKEN` live only in `.env` (gitignored). Never put
   real secrets in committed files.
 - Keep the bot's QQ account safe: the session in `./napcat/QQ` is sensitive and is also
-  gitignored.
+  gitignored. Its quick-login credentials live in `napcat/QQ/nt_qq/global/nt_db/login.db`.
+- Do not commit your QQ account number. Provide it through the gitignored `.env`
+  (`NAPCAT_QUICK_ACCOUNT`) or NapCat's own gitignored `napcat/config/webui.json`
+  (`autoLoginAccount`), never through `compose.yaml` or any other tracked file.
