@@ -1,0 +1,48 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    name: Build linux/amd64 binaries and publish release
+    # Only the canonical repository publishes releases. Forks inherit this
+    # workflow, so without the guard a tag pushed to a fork would publish the
+    # release under the fork instead of upstream.
+    if: github.repository == 'BITNP/miss-raspberry-agent'
+    runs-on: ubuntu-latest
+    env:
+      CGO_ENABLED: "0"
+      GOOS: linux
+      GOARCH: amd64
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: Build binaries
+        run: |
+          mkdir -p dist
+          go build -trimpath -ldflags "-s -w" -o dist/agent ./cmd/server
+          go build -trimpath -ldflags "-s -w" -o dist/moderator ./cmd/moderator
+          tar -czf "dist/miss-raspberry-agent_${GITHUB_REF_NAME}_linux_amd64.tar.gz" -C dist agent moderator
+
+      - name: Generate checksums
+        run: sha256sum dist/*.tar.gz > dist/checksums.txt
+
+      - name: Publish release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "${GITHUB_REF_NAME}" \
+            --title "${GITHUB_REF_NAME}" \
+            --generate-notes \
+            dist/*.tar.gz dist/checksums.txt
