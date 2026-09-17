@@ -1,0 +1,55 @@
+name: Publish image
+
+on:
+  push:
+    tags:
+      - "v*"
+
+jobs:
+  image:
+    name: Build and push linux/amd64 image to GHCR
+    # Only the canonical repository publishes images. Forks inherit this
+    # workflow, so without the guard a tag pushed to a fork would push the
+    # image under the fork's package namespace instead of upstream.
+    if: github.repository == 'BITNP/miss-raspberry-agent'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      # Gate the publish on the test suite so a red commit cannot reach the registry.
+      - name: Test
+        run: go test ./...
+
+      - uses: docker/setup-buildx-action@v3
+
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ghcr.io/bitnp/miss-raspberry-agent
+          tags: |
+            type=ref,event=tag
+            # Only stable tags move :latest; pre-releases (a hyphen in the tag)
+            # keep their own version tag only.
+            type=raw,value=latest,enable=${{ !contains(github.ref_name, '-') }}
+
+      - uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: true
+          platforms: linux/amd64
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}

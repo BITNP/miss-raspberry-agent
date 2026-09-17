@@ -30,8 +30,8 @@ LLM (OpenAI-compatible, e.g. DeepSeek)
 
 ## Requirements
 
-- Go 1.26+
-- Docker with the Compose plugin (for NapCat)
+- Go 1.26+ (only needed to build from source; a prebuilt image is published to GHCR)
+- Docker with the Compose plugin (for NapCat, and optionally the agent)
 - A QQ account (for the bot to log in with)
 - An LLM API key (OpenAI-compatible endpoint)
 
@@ -49,6 +49,7 @@ do not commit the real `.env` (it is gitignored).
 | `NAPCAT_WS_URL` | no | `ws://127.0.0.1:3001` | NapCat WebSocket server address |
 | `NAPCAT_ACCESS_TOKEN` | no | empty | Bearer token if NapCat WS server requires one |
 | `NAPCAT_QUICK_ACCOUNT` | no | empty | QQ number NapCat quick-logins with on startup; used by docker compose, not the Go app |
+| `AGENT_TAG` | no | `latest` | Image tag for the `agent` compose service (`ghcr.io/bitnp/miss-raspberry-agent:$AGENT_TAG`) |
 | `HTTP_ADDR` | no | `:4514` | Address the HTTP API listens on |
 | `API_TOKEN` | yes | — | Bearer token required by the HTTP API |
 
@@ -71,7 +72,7 @@ curl -X POST http://127.0.0.1:4514/api/v1/agents/main/messages \
 ### 1. Start NapCat
 
 ```bash
-docker compose up -d
+docker compose up -d napcat
 docker logs -f napcat        # first run prints the WebUI login token
 ```
 
@@ -82,7 +83,7 @@ docker logs -f napcat        # first run prints the WebUI login token
   is empty; if you set `NAPCAT_ACCESS_TOKEN`, set the same value there (or in the
   per-account `onebot11_<qq>.json` that NapCat writes).
 - **Auto-login after the first QR login.** The QQ session persists in `./napcat/QQ`, so
-  set `NAPCAT_QUICK_ACCOUNT` in `.env` to your QQ number and `docker compose up -d`
+  set `NAPCAT_QUICK_ACCOUNT` in `.env` to your QQ number and `docker compose up -d napcat`
   again. NapCat then quick-logins that account on every start instead of showing a QR
   code. Keep the value in the gitignored `.env` — never hardcode it in `compose.yaml`,
   `README.md`, or any other tracked file. Leave the variable empty to require a manual
@@ -122,6 +123,36 @@ go test ./...
 go vet ./...
 ```
 
+## Running with Docker
+
+Tagged releases publish a `linux/amd64` image to GitHub Container Registry
+(`ghcr.io/bitnp/miss-raspberry-agent`). Pull a specific version:
+
+```bash
+docker pull ghcr.io/bitnp/miss-raspberry-agent:v0.0.1-alpha.1
+```
+
+`:latest` tracks stable releases only — pre-release tags (anything with a hyphen, such as
+`v0.0.1-alpha.1`) are published under their version tag alone.
+
+`compose.yaml` defines an `agent` service that uses this image, so the whole stack
+(NapCat + agent) starts with:
+
+```bash
+cp .env.example .env   # fill in MODEL_API_KEY and API_TOKEN
+docker compose up -d
+docker compose logs -f agent
+```
+
+Set `AGENT_TAG` in `.env` to pin the image version (defaults to `latest`). The image runs
+the Go agent only; NapCat stays the `mlikiowa/napcat-docker` image. The container talks to
+NapCat over the compose network at `ws://napcat:3001`, so it does not need the host's
+`127.0.0.1:3001` binding.
+
+> GHCR packages are private by default even for a public repository. Until a maintainer
+> changes the package visibility to public in GitHub's package settings, `docker pull`
+> requires `docker login ghcr.io`.
+
 ## Deploying to a server
 
 The deployment runs the agent binary as a systemd service on the host and NapCat in
@@ -139,7 +170,7 @@ Install Go 1.26+ and Docker/Compose on the server if not already present.
 ### 2. Start NapCat
 
 ```bash
-docker compose up -d
+docker compose up -d napcat
 ```
 
 The compose file binds the WebUI (`6099`) and WS port (`3001`) to `127.0.0.1` only.
@@ -156,7 +187,7 @@ from the tracked `napcat/config/onebot11.json`, so no manual network setup is ne
 QQ session persists in `./napcat/QQ` across restarts.
 
 After that first login, set `NAPCAT_QUICK_ACCOUNT` in the server's `.env` (see
-[Configuration](#configuration)) and `docker compose up -d` once more, so NapCat
+[Configuration](#configuration)) and `docker compose up -d napcat` once more, so NapCat
 quick-logins on boot instead of waiting for a QR scan.
 
 ### 3. Build the agent

@@ -1,0 +1,14 @@
+# Exclude everything the image build does not need. Keeping .env out of the
+# context guarantees secrets can never be copied into an image layer.
+.git
+.github
+.idea
+.env
+napcat
+dist
+test
+compose.yaml
+Dockerfile
+.dockerignore
+*.md
+LICENSE
