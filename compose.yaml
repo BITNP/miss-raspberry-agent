@@ -16,3 +16,18 @@ services:
     volumes:
       - ./napcat/config:/app/napcat/config:z
       - ./napcat/QQ:/app/.config/QQ:z
+
+  agent:
+    # Published image from GHCR. Pin a version with AGENT_TAG=<tag> in .env,
+    # e.g. AGENT_TAG=v0.0.1-alpha.1; defaults to latest.
+    image: ghcr.io/bitnp/miss-raspberry-agent:${AGENT_TAG:-latest}
+    container_name: agent
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      # Reach NapCat over the compose network instead of the host loopback.
+      NAPCAT_WS_URL: ws://napcat:3001
+    ports:
+      - "127.0.0.1:4514:4514"
+    depends_on:
+      - napcat
