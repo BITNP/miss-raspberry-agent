@@ -14,6 +14,7 @@ import (
 	transporthttp "miss-raspberry-agent/internal/adapter/http"
 	"miss-raspberry-agent/internal/adapter/http/handler"
 	"miss-raspberry-agent/internal/agent/tagger"
+	"miss-raspberry-agent/internal/health"
 	"miss-raspberry-agent/internal/tagging"
 )
 
@@ -32,6 +33,7 @@ func newTaggerTestRouter() (*gin.Engine, *fakeTagger) {
 	router := transporthttp.NewRouter(
 		handler.NewMessageHandler(fakeSubmitter{}),
 		handler.NewTaggingHandler(tagging.NewService(tagging.NewStore(), fake)),
+		handler.NewHealthHandler(health.NewService(nil)),
 		testToken,
 	)
 	return router, fake
@@ -178,6 +180,7 @@ func TestTaggerAgentWiredThroughHandler(t *testing.T) {
 	router := transporthttp.NewRouter(
 		handler.NewMessageHandler(fakeSubmitter{}),
 		handler.NewTaggingHandler(service),
+		handler.NewHealthHandler(health.NewService(nil)),
 		testToken,
 	)
 

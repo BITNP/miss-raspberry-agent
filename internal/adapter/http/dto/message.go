@@ -21,6 +21,21 @@ type HealthResponse struct {
 	Status string `json:"status"`
 }
 
+// ReadinessResponse is returned by GET /api/v1/health. Status is "ok" when every dependency is
+// healthy and "degraded" otherwise; the HTTP status mirrors this (200 vs 503).
+type ReadinessResponse struct {
+	Status       string                      `json:"status"`
+	QueueLength  int                         `json:"queue_length"`
+	Dependencies []ReadinessDependencyStatus `json:"dependencies"`
+}
+
+// ReadinessDependencyStatus is one dependency's outcome in a ReadinessResponse.
+type ReadinessDependencyStatus struct {
+	Name   string `json:"name"`
+	Status string `json:"status"`
+	Error  string `json:"error,omitempty"`
+}
+
 // ErrorResponse is the uniform error body for all API failures.
 type ErrorResponse struct {
 	Error string `json:"error"`

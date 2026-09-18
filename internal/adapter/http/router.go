@@ -12,9 +12,9 @@ import (
 	"miss-raspberry-agent/internal/adapter/http/middleware"
 )
 
-// NewRouter builds the HTTP router. The health endpoint is public; everything under /api/v1
-// requires the bearer token.
-func NewRouter(messageHandler *handler.MessageHandler, taggingHandler *handler.TaggingHandler, apiToken string) *gin.Engine {
+// NewRouter builds the HTTP router. GET /healthz is public; everything under /api/v1 requires
+// the bearer token.
+func NewRouter(messageHandler *handler.MessageHandler, taggingHandler *handler.TaggingHandler, healthHandler *handler.HealthHandler, apiToken string) *gin.Engine {
 	router := gin.New()
 	router.Use(gin.Logger(), gin.Recovery())
 
@@ -24,6 +24,7 @@ func NewRouter(messageHandler *handler.MessageHandler, taggingHandler *handler.T
 
 	api := router.Group("/api/v1")
 	api.Use(middleware.TokenAuth(apiToken))
+	api.GET("/health", healthHandler.Check)
 	api.POST("/agents/main/messages", messageHandler.Send)
 	api.POST("/agents/tagger/tag-sets", taggingHandler.RegisterSet)
 	api.POST("/agents/tagger/tag", taggingHandler.Tag)

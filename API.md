@@ -31,6 +31,7 @@ All errors share one shape:
 | `404 Not Found` | Referenced resource (e.g. tag set) does not exist |
 | `422 Unprocessable Entity` | Well-formed request but unsupported value (e.g. unknown platform) |
 | `500 Internal Server Error` | Unexpected server error |
+| `503 Service Unavailable` | Readiness check failed: at least one dependency is down |
 
 ## Endpoints
 
@@ -50,6 +51,61 @@ All errors share one shape:
 
 ```bash
 curl http://127.0.0.1:4514/healthz
+```
+
+### `GET /api/v1/health`
+
+**Description:** Readiness check for peer services. It reports whether this service can do useful
+work: the NapCat (QQ) connection, whether the member directory has been loaded, and how many
+items are waiting in the main agent's todo queue. Requires the bearer token. Returns `200 OK`
+when every dependency is healthy and `503 Service Unavailable` when any dependency is down.
+
+**Request:** No body, no parameters.
+
+**Response `200 OK` / `503 Service Unavailable`**
+
+| Field | Type | Description |
+| --- | --- | --- |
+| `status` | string | Aggregate status: `ok` (200) or `degraded` (503). |
+| `queue_length` | integer | Number of items waiting for the main agent. Informational only. |
+| `dependencies` | array | One entry per probed dependency. |
+| `dependencies[].name` | string | Dependency name (`napcat`, `napcat_directory`). |
+| `dependencies[].status` | string | `ok` or `degraded`. |
+| `dependencies[].error` | string | Reason the dependency is down; omitted when healthy. |
+
+Healthy:
+
+```json
+{
+  "status": "ok",
+  "queue_length": 0,
+  "dependencies": [
+    { "name": "napcat", "status": "ok" },
+    { "name": "napcat_directory", "status": "ok" }
+  ]
+}
+```
+
+Degraded:
+
+```json
+{
+  "status": "degraded",
+  "queue_length": 0,
+  "dependencies": [
+    { "name": "napcat", "status": "degraded", "error": "no napcat bot connected" },
+    { "name": "napcat_directory", "status": "degraded", "error": "member directory not loaded yet" }
+  ]
+}
+```
+
+**Error responses:** `401` (bad token).
+
+**curl**
+
+```bash
+curl http://127.0.0.1:4514/api/v1/health \
+  -H "Authorization: Bearer $API_TOKEN"
 ```
 
 ### `POST /api/v1/agents/main/messages`
