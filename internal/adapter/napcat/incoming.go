@@ -19,9 +19,7 @@ func (c *NapcatClient) HandleIncomingMessage(msg Message) bool {
 	queue := c.todoList
 	c.mu.RUnlock()
 
-	log.Printf("[Napcat] received message: %s", msg.Content)
 	if !shouldActivate(msg) {
-		log.Printf("[Napcat] group message does not @ the bot, not queued (sender=%d content=%s)", msg.UserID, msg.Content)
 		return false
 	}
 	if queue == nil {

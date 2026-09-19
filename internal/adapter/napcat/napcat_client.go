@@ -140,7 +140,6 @@ func (c *NapcatClient) Start() error {
 	// Load and periodically refresh the group member directory once a bot connects.
 	go c.groupSyncLoop()
 
-	log.Println("[Napcat] Client started")
 	return nil
 }
 
@@ -156,8 +155,6 @@ func (c *NapcatClient) Stop() {
 	c.running = false
 	close(c.done)
 	close(c.Outgoing)
-
-	log.Println("[Napcat] Client stopped")
 }
 
 // SyncDirectory loads the bot's friend list, group list and each group's member
@@ -193,8 +190,6 @@ func (c *NapcatClient) SyncDirectory(ctx context.Context) error {
 	}
 
 	c.directory.Replace(friends, BuildMemberGroups(groupMembers))
-	log.Printf("[Napcat] directory loaded: %d friends, %d groups, %d members, %d associations",
-		c.directory.FriendCount(), len(groupIDs), c.directory.MemberCount(), c.directory.EdgeCount())
 	return nil
 }
 
@@ -256,7 +251,7 @@ func (c *NapcatClient) sendPrivate(ctx context.Context, userID int64, content st
 		return c.callAction(ctx, "send_private_msg", zero.Params{"user_id": userID, "message": content})
 	}
 
-	groupID, ok := TrySendToMemberViaGroups(c.directory.Groups(userID), func(groupID int64) bool {
+	_, ok := TrySendToMemberViaGroups(c.directory.Groups(userID), func(groupID int64) bool {
 		return c.callAction(ctx, "send_private_msg", zero.Params{
 			"user_id":  userID,
 			"group_id": groupID,
@@ -264,7 +259,6 @@ func (c *NapcatClient) sendPrivate(ctx context.Context, userID int64, content st
 		})
 	})
 	if ok {
-		log.Printf("[Napcat] temporary session message sent to %d via group %d", userID, groupID)
 		return true
 	}
 
@@ -327,7 +321,6 @@ func (c *NapcatClient) SendMessage(_ context.Context, target messaging.Target, c
 	if !c.enqueue(msg) {
 		return messaging.ErrQueueFull
 	}
-	log.Printf("[Napcat] message queued for sending: %s", content)
 	return nil
 }
 
@@ -447,10 +440,7 @@ func (c *NapcatClient) processOutgoing() {
 					zb.SendGroupMessage(msg.GroupID, msg.Content)
 					return false
 				})
-				log.Printf("[Napcat] group message sent to %d: %s", msg.GroupID, msg.Content)
-			} else if c.sendPrivate(ctx, msg.UserID, msg.Content) {
-				log.Printf("[Napcat] private message sent to %d: %s", msg.UserID, msg.Content)
-			} else {
+			} else if !c.sendPrivate(ctx, msg.UserID, msg.Content) {
 				log.Printf("[Napcat] private message to %d could not be sent: %s", msg.UserID, msg.Content)
 			}
 
