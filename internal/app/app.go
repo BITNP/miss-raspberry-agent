@@ -5,6 +5,7 @@ package app
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log"
 	"time"
@@ -15,6 +16,7 @@ import (
 	mainagent "miss-raspberry-agent/internal/agent/main"
 	taggeragent "miss-raspberry-agent/internal/agent/tagger"
 	"miss-raspberry-agent/internal/config"
+	"miss-raspberry-agent/internal/health"
 	"miss-raspberry-agent/internal/llm"
 	"miss-raspberry-agent/internal/messaging"
 	"miss-raspberry-agent/internal/tagging"
@@ -56,9 +58,28 @@ func Run(ctx context.Context, cfg config.Config) error {
 		return fmt.Errorf("construct tagging model: %w", err)
 	}
 	taggingService := tagging.NewService(tagging.NewStore(), taggeragent.NewTagger(taggingModel))
+
+	// Readiness report for peer services: it reflects the NapCat connection, whether the member
+	// directory has been loaded, and how much work is waiting for the main agent.
+	healthService := health.NewService(agent.Queue(),
+		health.Check{Name: "napcat", Ready: func(context.Context) error {
+			if !client.Connected() {
+				return errors.New("no napcat bot connected")
+			}
+			return nil
+		}},
+		health.Check{Name: "napcat_directory", Ready: func(context.Context) error {
+			if !client.DirectoryLoaded() {
+				return errors.New("member directory not loaded yet")
+			}
+			return nil
+		}},
+	)
+
 	router := http.NewRouter(
 		httphandler.NewMessageHandler(messageService),
 		httphandler.NewTaggingHandler(taggingService),
+		httphandler.NewHealthHandler(healthService),
 		cfg.HTTP.APIToken,
 	)
 	server := http.NewServer(cfg.HTTP.Addr, router)

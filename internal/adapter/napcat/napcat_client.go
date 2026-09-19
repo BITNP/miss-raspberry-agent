@@ -198,6 +198,18 @@ func (c *NapcatClient) SyncDirectory(ctx context.Context) error {
 	return nil
 }
 
+// Connected reports whether a NapCat bot connection is currently established. It is used by
+// readiness checks.
+func (c *NapcatClient) Connected() bool {
+	return c.bot() != nil
+}
+
+// DirectoryLoaded reports whether the member directory has been populated at least once. It is
+// used by readiness checks.
+func (c *NapcatClient) DirectoryLoaded() bool {
+	return c.directory.Loaded()
+}
+
 // bot returns a connected ZeroBot context, or nil when no bot is connected yet.
 func (c *NapcatClient) bot() *zero.Ctx {
 	var bot *zero.Ctx

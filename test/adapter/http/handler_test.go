@@ -8,6 +8,7 @@ import (
 
 	transporthttp "miss-raspberry-agent/internal/adapter/http"
 	"miss-raspberry-agent/internal/adapter/http/handler"
+	"miss-raspberry-agent/internal/health"
 	"miss-raspberry-agent/internal/tagging"
 )
 
@@ -78,6 +79,7 @@ func TestSendMessageInternalError(t *testing.T) {
 	router := transporthttp.NewRouter(
 		handler.NewMessageHandler(fakeSubmitter{err: errors.New("boom")}),
 		handler.NewTaggingHandler(tagging.NewService(tagging.NewStore(), &fakeTagger{})),
+		handler.NewHealthHandler(health.NewService(nil)),
 		testToken,
 	)
 	rec := doRequest(router, http.MethodPost, "/api/v1/agents/main/messages", "Bearer "+testToken, validBody())
