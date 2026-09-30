@@ -94,7 +94,7 @@ func TestMainAgentKeepsConversationMemoryAcrossQueueActivations(t *testing.T) {
 	fake := &memoryFakeModel{}
 
 	ctx, cancel := context.WithCancel(context.Background())
-	agent, err := mainagent.NewMainAgent(ctx, fake, stubSender{}, stubHistory{})
+	agent, err := mainagent.NewMainAgent(ctx, fake, stubSender{}, stubHistory{}, "")
 	if err != nil {
 		t.Fatalf("NewMainAgent: %v", err)
 	}
