@@ -37,7 +37,7 @@ func Run(ctx context.Context, cfg config.Config) error {
 		SuperUsers:    []int64{},
 	})
 
-	agent, err := mainagent.NewMainAgent(ctx, chatModel, client, client)
+	agent, err := mainagent.NewMainAgent(ctx, chatModel, client, client, cfg.Agent.SystemPrompt)
 	if err != nil {
 		return fmt.Errorf("build main agent: %w", err)
 	}

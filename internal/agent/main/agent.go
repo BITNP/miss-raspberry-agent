@@ -57,8 +57,9 @@ type MainAgent struct {
 // NewMainAgent builds the main agent: it creates the agent's own todo queue and wires up the
 // qq_message send/history tools, todo_list, current_time, and schedule_task tools. The sender
 // and history arguments are narrow messaging interfaces (implemented by the NapCat adapter) so
-// the agent is not coupled to a concrete transport.
-func NewMainAgent(ctx context.Context, chatModel model.BaseChatModel, sender messaging.Sender, history messaging.HistoryProvider) (*MainAgent, error) {
+// the agent is not coupled to a concrete transport. systemPrompt overrides the built-in persona
+// when non-empty; pass the centrally loaded configuration value.
+func NewMainAgent(ctx context.Context, chatModel model.BaseChatModel, sender messaging.Sender, history messaging.HistoryProvider, systemPrompt string) (*MainAgent, error) {
 	sched := scheduler.NewScheduler(scheduler.NewStore())
 	a := &MainAgent{todo: todo.NewStore(), sched: sched}
 
@@ -77,7 +78,7 @@ func NewMainAgent(ctx context.Context, chatModel model.BaseChatModel, sender mes
 	agent, err := adk.NewChatModelAgent(ctx, &adk.ChatModelAgentConfig{
 		Name:        "main_agent",
 		Description: "QQ 助手：回复私聊/群聊消息并维护待办列表",
-		Instruction: BaseSystemPrompt,
+		Instruction: SystemPrompt(systemPrompt),
 		Model:       chatModel,
 		ToolsConfig: adk.ToolsConfig{
 			ToolsNodeConfig: compose.ToolsNodeConfig{
