@@ -49,7 +49,7 @@ func TestRunProcessesTodoQueue(t *testing.T) {
 	fake := &memoryFakeModel{}
 
 	ctx, cancel := context.WithCancel(context.Background())
-	agent, err := mainagent.NewMainAgent(ctx, fake, stubSender{}, stubHistory{})
+	agent, err := mainagent.NewMainAgent(ctx, fake, stubSender{}, stubHistory{}, "")
 	if err != nil {
 		t.Fatalf("NewMainAgent: %v", err)
 	}
@@ -86,7 +86,7 @@ func TestRunDoesNotProcessEmptyQueue(t *testing.T) {
 	fake := &countingModel{}
 
 	ctx, cancel := context.WithCancel(context.Background())
-	agent, err := mainagent.NewMainAgent(ctx, fake, stubSender{}, stubHistory{})
+	agent, err := mainagent.NewMainAgent(ctx, fake, stubSender{}, stubHistory{}, "")
 	if err != nil {
 		t.Fatalf("NewMainAgent: %v", err)
 	}
@@ -111,7 +111,7 @@ func TestDrainRemovesFirstTodoAfterMaxErrorRetries(t *testing.T) {
 	fake := &countingModel{err: errors.New("model boom")}
 
 	ctx, cancel := context.WithCancel(context.Background())
-	agent, err := mainagent.NewMainAgent(ctx, fake, stubSender{}, stubHistory{})
+	agent, err := mainagent.NewMainAgent(ctx, fake, stubSender{}, stubHistory{}, "")
 	if err != nil {
 		t.Fatalf("NewMainAgent: %v", err)
 	}
@@ -148,7 +148,7 @@ func TestStalledQueueIsNotRetried(t *testing.T) {
 	fake := &countingModel{} // succeeds but never completes the todo item
 
 	ctx, cancel := context.WithCancel(context.Background())
-	agent, err := mainagent.NewMainAgent(ctx, fake, stubSender{}, stubHistory{})
+	agent, err := mainagent.NewMainAgent(ctx, fake, stubSender{}, stubHistory{}, "")
 	if err != nil {
 		t.Fatalf("NewMainAgent: %v", err)
 	}

@@ -86,7 +86,7 @@ func TestMainAgentStrictProviderToolSequence(t *testing.T) {
 		t.Fatalf("NewChatModel: %v", err)
 	}
 
-	agent, err := mainagent.NewMainAgent(ctx, chatModel, stubSender{}, stubHistory{})
+	agent, err := mainagent.NewMainAgent(ctx, chatModel, stubSender{}, stubHistory{}, "")
 	if err != nil {
 		t.Fatalf("NewMainAgent: %v", err)
 	}

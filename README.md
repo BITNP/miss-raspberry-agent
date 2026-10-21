@@ -46,6 +46,7 @@ do not commit the real `.env` (it is gitignored).
 | `MODEL_API_KEY` | yes | — | LLM API key |
 | `MODEL_BASE_URL` | no | `https://api.openai.com/v1` | OpenAI-compatible base URL |
 | `MODEL_NAME` | no | `gpt-4o-mini` | Model ID |
+| `SYSTEM_PROMPT` | no | built-in 树莓娘 persona | Overrides the main agent's system prompt; must be a single line without curly braces |
 | `NAPCAT_WS_URL` | no | `ws://127.0.0.1:3001` | NapCat WebSocket server address |
 | `NAPCAT_ACCESS_TOKEN` | no | empty | Bearer token if NapCat WS server requires one |
 | `NAPCAT_QUICK_ACCOUNT` | no | empty | QQ number NapCat quick-logins with on startup; used by docker compose, not the Go app |

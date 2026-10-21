@@ -3,7 +3,9 @@ package config
 
 import (
 	"errors"
+	"fmt"
 	"os"
+	"strings"
 )
 
 const (
@@ -17,6 +19,8 @@ const (
 	envHTTPAddr     = "HTTP_ADDR"
 	envHTTPAPIToken = "API_TOKEN"
 
+	envSystemPrompt = "SYSTEM_PROMPT"
+
 	defaultBaseURL            = "https://api.openai.com/v1"
 	defaultModelStr           = "gpt-4o-mini"
 	defaultNapcatWebSocketURL = "ws://127.0.0.1:3001"
@@ -28,6 +32,14 @@ type Config struct {
 	Model  ModelConfig
 	Napcat NapcatConfig
 	HTTP   HTTPConfig
+	Agent  AgentConfig
+}
+
+// AgentConfig describes the externally callable agents.
+type AgentConfig struct {
+	// SystemPrompt overrides the main agent's built-in persona when non-empty.
+	// The built-in default is documented in internal/agent/main.
+	SystemPrompt string
 }
 
 // ModelConfig describes which LLM endpoint to call.
@@ -67,6 +79,14 @@ func Load() (Config, error) {
 		return Config{}, errors.New("environment variable API_TOKEN is required")
 	}
 
+	// adk formats the agent instruction like an f-string when session values are
+	// present, so braces in the prompt would be interpreted instead of sent
+	// literally. Reject them at startup rather than failing mid-conversation.
+	systemPrompt := os.Getenv(envSystemPrompt)
+	if strings.ContainsAny(systemPrompt, "{}") {
+		return Config{}, fmt.Errorf("environment variable %s must not contain curly braces", envSystemPrompt)
+	}
+
 	return Config{
 		Model: cfg,
 		Napcat: NapcatConfig{
@@ -76,6 +96,9 @@ func Load() (Config, error) {
 		HTTP: HTTPConfig{
 			Addr:     envOrDefault(envHTTPAddr, defaultHTTPAddr),
 			APIToken: apiToken,
+		},
+		Agent: AgentConfig{
+			SystemPrompt: systemPrompt,
 		},
 	}, nil
 }

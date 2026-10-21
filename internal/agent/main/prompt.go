@@ -39,6 +39,17 @@ const BaseSystemPrompt = `
 5. 你有跨消息的对话记忆：之后的每次激活都能看到之前的用户消息、你的回复以及工具调用结果，可据此回答需要上下文的问题。
 `
 
+// SystemPrompt returns the system prompt the main agent should use: custom when it carries
+// content, otherwise the built-in BaseSystemPrompt persona. Callers pass the centrally loaded
+// configuration value, so deployments can override the persona through the SYSTEM_PROMPT
+// environment variable without rebuilding the image.
+func SystemPrompt(custom string) string {
+	if strings.TrimSpace(custom) == "" {
+		return BaseSystemPrompt
+	}
+	return custom
+}
+
 // BuildActivationPrompt builds the user prompt used when the agent is activated; it includes the current todo list.
 func BuildActivationPrompt(items []todo.Item) string {
 	var sb strings.Builder
